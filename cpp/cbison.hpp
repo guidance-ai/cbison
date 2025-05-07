@@ -1,9 +1,11 @@
 #pragma once
+
 #include <cstdint>
 #include <cstddef>
 #include <vector>
 #include <string>
 #include <optional>
+#include <filesystem>
 #include "cbison_api.h"
 
 namespace cbison {
@@ -250,6 +252,59 @@ public:
   bool requiresUtf8() const noexcept {
     return t_->tokenize_bytes_requires_utf8;
   }
+};
+
+class CbisonEngineDll {
+  void *handle_ = nullptr;
+  std::string prefix_;
+
+  template <typename T>
+  T get_sym(const std::string &name) const;
+
+public:
+  CbisonEngineDll() = default;
+
+  /**
+   * Loads the engine DLL from the given path and infers or sets the symbol prefix.
+   * If prefix is empty, it's inferred from the filename stem.
+   *
+   * @param path Filesystem path to the shared library.
+   * @param prefix Optional symbol prefix (e.g., "llg", "xgr").
+   * @return true if successfully loaded, false otherwise.
+   */
+  bool load(const std::filesystem::path &path, const std::string &prefix = "");
+
+  /**
+   * Constructs a new HuggingFace tokenizer from a tokenizer.json string.
+   *
+   * @param tokenizer_json JSON content of tokenizer.json.
+   * @param options_json Optional engine-specific options.
+   * @param error_string Will be set to a diagnostic message, if any.
+   * @return Tokenizer handle, or nullptr on error.
+   */
+  cbison_tokenizer_t new_hf_tokenizer(const std::string &tokenizer_json,
+                                      const std::string &options_json,
+                                      std::string &error_string);
+
+  /**
+   * Constructs a new CBISON factory for a given tokenizer and options.
+   * Increments tokenizer's refcount. Returns nullptr on error.
+   *
+   * @param tokenizer Tokenizer handle.
+   * @param options_json Optional engine-specific options.
+   * @param error_string Will be set to a diagnostic message, if any.
+   * @return Factory handle, or nullptr on error.
+   */
+  cbison_factory_t new_factory(cbison_tokenizer_t tokenizer,
+                               const std::string &options_json,
+                               std::string &error_string);
+
+  /**
+   * Constructs a minimal single-byte tokenizer (used for testing).
+   *
+   * @return Tokenizer handle, or nullptr on error.
+   */
+  cbison_tokenizer_t new_byte_tokenizer();
 };
 
 } // namespace cbison

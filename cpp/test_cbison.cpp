@@ -4,12 +4,32 @@
 #include <algorithm>
 #include <utility>
 #include "cbison.hpp"
-#include "llguidance_cbison.h"
 
-int main() {
-  cbison_tokenizer_t t0 = llg_cbison_new_byte_tokenizer();
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    std::cerr << "Usage: " << argv[0] << " <path to engine library> [prefix]\n";
+    return 1;
+  }
+
+  cbison::CbisonEngineDll engine;
+  std::string prefix = "";
+  if (argc >= 3) {
+    prefix = argv[2];
+  }
+  if (!engine.load(argv[1], prefix)) {
+    std::cerr << "Failed to load engine library: " << argv[1] << '\n';
+    return 1;
+  }
+
+  cbison_tokenizer_t t0 = engine.new_byte_tokenizer();
   cbison::Tokenizer t(t0);
-  cbison::Factory f(llg_cbison_new_factory(t0, nullptr, nullptr, 0));
+  std::string err;
+  auto fptr = engine.new_factory(t0, "{}", err);
+  if (!fptr) {
+    std::cerr << "Failed to create factory: " << err << '\n';
+    return 1;
+  }
+  cbison::Factory f(fptr);
   t0->decr_ref_count(t0);
 
   // validate grammar
