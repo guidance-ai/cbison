@@ -12,13 +12,14 @@ bindgen \
     --allowlist-type 'cbison_mask_req.*' \
     --allowlist-item 'CBISON_.*' \
     --no-recursive-allowlist \
-    cbison_api.h >> tmp.rs
+    cpp/cbison_api.h >> tmp.rs
 
 mv tmp.rs ../llguidance_cbison/src/cbison.rs
-clang2py cbison_api.h | sed \
+
+clang2py cpp/cbison_api.h | sed \
     -e 's@ctypes.c_uint64@ctypes.c_size_t@' \
     -e 's@, ctypes.POINTER(struct_cbison_factory)@, cbison_factory_t@' \
     -e 's@, ctypes.POINTER(struct_cbison_matcher)@, cbison_matcher_t@' \
     -e 's@(ctypes.POINTER(struct_cbison_matcher)@(cbison_matcher_t@' \
     -e 's@ctypes.POINTER(ctypes.c_char)@ctypes.c_char_p@g' \
-    > cbison/bindings.py
+    > python/cbison/bindings.py

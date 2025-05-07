@@ -209,4 +209,41 @@ public:
   cbison_tokenizer_t new_byte_tokenizer();
 };
 
+class CppTokenizer {
+    cbison_tokenizer api_struct_;
+    std::atomic<int> ref_count_{1};
+
+    static CppTokenizer *fromC(cbison_tokenizer_t ptr);
+
+    static int get_token_trampoline(cbison_tokenizer_t api, uint32_t token_id,
+                                    uint8_t *bytes, size_t bytes_len);
+    static int is_special_token_trampoline(cbison_tokenizer_t api, uint32_t token_id);
+    static size_t tokenize_bytes_trampoline(cbison_tokenizer_t api,
+                                            const char *bytes, size_t bytes_len,
+                                            uint32_t *output_tokens,
+                                            size_t output_tokens_len);
+    static void incr_ref_trampoline(cbison_tokenizer_t api);
+    static void decr_ref_trampoline(cbison_tokenizer_t api);
+  
+  public:
+    CppTokenizer(size_t vocab, uint32_t eos, bool utf8_required);
+    virtual ~CppTokenizer();
+  
+    cbison_tokenizer_t c_api() { return &api_struct_; }
+  
+    /// Get bytes for the given token.
+    virtual std::vector<uint8_t> getToken(uint32_t token_id) const = 0;
+  
+    /// Returns true for non-plain-text tokens (like EOS).
+    virtual bool isSpecialToken(uint32_t token_id) const = 0;
+  
+    /// Tokenize a string to token ids.
+    virtual std::vector<uint32_t> tokenizeBytes(const std::string &input) const = 0;
+  
+  protected:
+    size_t n_vocab;
+    uint32_t eos_token_id;
+    bool tokenize_bytes_requires_utf8;
+  };
+
 } // namespace cbison

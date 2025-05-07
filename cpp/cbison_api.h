@@ -78,6 +78,11 @@ struct cbison_tokenizer {
   uint32_t reserved_hd[6];
 
   /**
+   * The value is implementation-specific.
+   */
+  void *impl_data;
+
+  /**
    * Get bytes for the given token.
    * Returns -1 on error (token_id >= n_vocab), and number of bytes in the token
    * on success (which can be larger than bytes_len). Writes at most bytes_len
@@ -174,6 +179,11 @@ struct cbison_factory {
   uint32_t eos_token_id;
 
   uint32_t reserved_hd[7];
+
+  /**
+   * The value is implementation-specific.
+   */
+  void *impl_data;
 
   /**
    * Free the factory.
