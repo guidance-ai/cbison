@@ -215,7 +215,7 @@ class CbisonFactory:
         Initializes the factory wrapper from a raw memory address.
         
         Args:
-            addr (int): The raw memory address of the factory.
+            addr (int): The raw memory address of the factory - this takes ownership of the factory.
         
         Raises:
             ValueError: If the address is invalid or the magic/version mismatch.
@@ -233,7 +233,7 @@ class CbisonFactory:
         Frees the factory when garbage collected.
         """
         if self.handle:
-            self.handle.free_factory(self.handle)
+            self.handle.decr_ref_count(self.handle)
             self.handle = None  # type: ignore
 
     @property

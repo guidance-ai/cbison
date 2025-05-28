@@ -2,6 +2,8 @@
 
 namespace cbison {
 
+// we don't have to increment ref count on api because the matcher will hold on
+// to it
 Matcher::Matcher(cbison_factory_t api, cbison_matcher_t m) noexcept
     : api_(api), m_(m) {}
 
@@ -36,7 +38,8 @@ std::vector<uint32_t> Matcher::computeMask() const noexcept {
   return mask;
 }
 
-std::vector<uint32_t> Matcher::computeFFTokens(size_t max_tokens) const noexcept {
+std::vector<uint32_t>
+Matcher::computeFFTokens(size_t max_tokens) const noexcept {
   std::vector<uint32_t> buf(max_tokens);
   int32_t n = api_->compute_ff_tokens(m_, buf.data(), max_tokens);
   if (n < 0)
@@ -52,7 +55,8 @@ std::optional<std::string> Matcher::getError() const noexcept {
   return std::string(e);
 }
 
-int Matcher::validateTokens(const std::vector<uint32_t> &tokens) const noexcept {
+int Matcher::validateTokens(
+    const std::vector<uint32_t> &tokens) const noexcept {
   return api_->validate_tokens(m_, tokens.data(), tokens.size());
 }
 
@@ -64,25 +68,36 @@ int Matcher::rollback(size_t n) const noexcept {
   return api_->rollback ? api_->rollback(m_, n) : -1;
 }
 
-Factory::~Factory() noexcept {
+Factory::Factory(void *addr) noexcept
+    : f_(reinterpret_cast<cbison_factory_t>(addr)) {
   if (f_)
-    f_->free_factory(f_);
+    f_->incr_ref_count(f_);
 }
 
-Matcher Factory::newMatcher(const std::string &type, const std::string &grammar) const noexcept {
+Factory::~Factory() noexcept {
+  if (f_)
+    f_->decr_ref_count(f_);
+}
+
+Matcher Factory::newMatcher(const std::string &type,
+                            const std::string &grammar) const noexcept {
   auto m = f_->new_matcher(f_, type.c_str(), grammar.c_str());
   return Matcher(f_, m);
 }
 
-std::pair<bool, std::string> Factory::validateGrammar(const std::string &type, const std::string &grammar) const noexcept {
+std::pair<bool, std::string>
+Factory::validateGrammar(const std::string &type,
+                         const std::string &grammar) const noexcept {
   char buf[16 * 1024];
-  int32_t r = f_->validate_grammar(f_, type.c_str(), grammar.c_str(), buf, sizeof(buf));
+  int32_t r =
+      f_->validate_grammar(f_, type.c_str(), grammar.c_str(), buf, sizeof(buf));
   if (r == 0)
     return {true, ""};
   return {r >= 0, std::string(buf)};
 }
 
-int Factory::computeMasks(const std::vector<std::pair<Matcher *, uint32_t *>> &reqs) const noexcept {
+int Factory::computeMasks(
+    const std::vector<std::pair<Matcher *, uint32_t *>> &reqs) const noexcept {
   size_t n = reqs.size();
   std::vector<cbison_mask_req_t> c(n);
   for (size_t i = 0; i < n; ++i) {
@@ -102,9 +117,7 @@ Tokenizer::~Tokenizer() noexcept {
     t_->decr_ref_count(t_);
 }
 
-Tokenizer::Tokenizer(Tokenizer &&o) noexcept : t_(o.t_) {
-  o.t_ = nullptr;
-}
+Tokenizer::Tokenizer(Tokenizer &&o) noexcept : t_(o.t_) { o.t_ = nullptr; }
 
 Tokenizer &Tokenizer::operator=(Tokenizer &&o) noexcept {
   if (t_)
@@ -114,9 +127,7 @@ Tokenizer &Tokenizer::operator=(Tokenizer &&o) noexcept {
   return *this;
 }
 
-cbison_tokenizer_t Tokenizer::get() const noexcept {
-  return t_;
-}
+cbison_tokenizer_t Tokenizer::get() const noexcept { return t_; }
 
 std::vector<uint8_t> Tokenizer::getToken(uint32_t token_id) const noexcept {
   size_t est_len = 32;
@@ -134,17 +145,20 @@ std::vector<uint8_t> Tokenizer::getToken(uint32_t token_id) const noexcept {
   return buf;
 }
 
-std::vector<uint32_t> Tokenizer::tokenizeBytes(const std::vector<uint8_t> &bytes) const noexcept {
+std::vector<uint32_t>
+Tokenizer::tokenizeBytes(const std::vector<uint8_t> &bytes) const noexcept {
   if (!t_->tokenize_bytes)
     return {};
   size_t est_tokens = bytes.size() + 1;
   std::vector<uint32_t> out(est_tokens);
-  size_t n = t_->tokenize_bytes(t_, (const char*)bytes.data(), bytes.size(), out.data(), out.size());
+  size_t n = t_->tokenize_bytes(t_, (const char *)bytes.data(), bytes.size(),
+                                out.data(), out.size());
   out.resize(n);
   return out;
 }
 
-std::vector<uint32_t> Tokenizer::tokenizeString(const std::string &s) const noexcept {
+std::vector<uint32_t>
+Tokenizer::tokenizeString(const std::string &s) const noexcept {
   return tokenizeBytes(std::vector<uint8_t>(s.begin(), s.end()));
 }
 

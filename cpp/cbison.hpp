@@ -16,8 +16,8 @@ class Matcher {
   cbison_matcher_t m_;
 
 public:
-  /// Wrap existing matcher pointer.
-  /// @param api  Factory pointer used to free/clone.
+  /// Wrap existing matcher pointer (takes ownership of the matcher).
+  /// @param api  Factory pointer (serves as kind of "vtable")
   /// @param m    Raw matcher pointer.
   Matcher(cbison_factory_t api, cbison_matcher_t m) noexcept;
 
@@ -82,8 +82,7 @@ class Factory {
 public:
   /// Wrap existing factory address.
   /// @param addr  Pointer value returned from loader.
-  Factory(const void *addr) noexcept
-      : f_(reinterpret_cast<cbison_factory_t>((void *)addr)) {}
+  Factory(void *addr) noexcept;
 
   /// Frees the factory.
   ~Factory() noexcept;

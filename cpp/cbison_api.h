@@ -186,9 +186,18 @@ struct cbison_factory {
   void *impl_data;
 
   /**
-   * Free the factory.
+   * Increment the reference count of the factory.
+   * All functions allocating factories set the reference count to 1.
+   * This can be no-op if the factory is never freed.
    */
-  void (*free_factory)(cbison_factory_t api);
+  void (*incr_ref_count)(cbison_factory_t api);
+
+  /**
+   * Decrement the reference count of the factory.
+   * If the reference count reaches 0, the factory is freed.
+   * This can be no-op if the factory is never freed.
+   */
+  void (*decr_ref_count)(cbison_factory_t api);
 
   /**
    * Check if given grammar is valid.
@@ -214,6 +223,9 @@ struct cbison_factory {
    * - "lark" - grammar in (a variant of) Lark syntax
    * - "llguidance" or "guidance" - grammar is a list of Lark or JSON schemas in
    * JSON format
+   * 
+   * Matcher that stays alive prevents the factory from being freed (by incrementing
+   * the reference count).
    */
   cbison_matcher_ptr_t (*new_matcher)(cbison_factory_t api,
                                       const char *grammar_type,
@@ -339,7 +351,7 @@ struct cbison_mask_req {
 // removed), where <prefix> is short name of the engine (e.g. "llg", "xgr",
 // etc.).
 //
-// All except for cbison_new_factory() one are optional.
+// All except for cbison_new_factory() are optional.
 
 /**
  * Construct a new CBISON factory for a given tokenizer and options.
